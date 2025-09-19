@@ -1,9 +1,12 @@
 <h1 align="center">bough</h1>
 
 
-Bough (/baʊ/) is an overengineered CLI tool for creating file tree diagrams. Useful for READMEs and documentation.
+Bough (/baʊ/) is an overengineered project focusing on the creation of file tree diagrams. Its uses range from READMEs and project documentation to use in editors such as [`bough.nvim`](https://github.com/emmalexandria/bough.nvim).
 
-The Bough project provides a crate called `bough-lib` which is used by the CLI for drawing file trees. This crate is designed to be usable outside of the CLI by any application which wants to draw a file tree.
+## Project overview 
+- [`bough`] - *the CLI, described by this README*
+- [`bough-lib`](./bough-lib/README.md)
+- [`boughd`](./boughd/README.md)
 
 ## Table of Contents
 - [Features](#features)
