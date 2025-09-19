@@ -1,12 +1,12 @@
 <h1 align="center">bough</h1>
 
 
-Bough (/baʊ/) is an overengineered project focusing on the creation of file tree diagrams. Its uses range from READMEs and project documentation to use in editors such as [`bough.nvim`](https://github.com/emmalexandria/bough.nvim).
+Bough (/baʊ/) is an overengineered project focusing on the creation of file tree diagrams. Its uses range from READMEs and project documentation to use in editor file trees (see [`bough.nvim`](https://github.com/emmalexandria/bough.nvim)).
 
 ## Project overview 
-- [`bough`] - *the CLI, described by this README*
-- [`bough-lib`](./bough-lib/README.md)
-- [`boughd`](./boughd/README.md)
+- `bough` - *the CLI, described by this README and [here](./bough/README.md).*
+- [`bough-lib`](./bough-lib/README.md) - *the Rust crate which powers `bough` and `boughd`.*
+- [`boughd`](./boughd/README.md) - *A file-watching daemon for use in applications like `bough.nvim`.*
 
 ## Table of Contents
 - [Features](#features)
