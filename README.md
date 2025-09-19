@@ -1,7 +1,9 @@
 <h1 align="center">bough</h1>
 
 
-Bough (/baʊ/) is an overengineered tool for creating tree diagrams. Useful for READMEs and documentation.
+Bough (/baʊ/) is an overengineered CLI tool for creating file tree diagrams. Useful for READMEs and documentation.
+
+The Bough project provides a crate called `bough-lib` which is used by the CLI for drawing file trees. This crate is designed to be usable outside of the CLI by any application which wants to draw a file tree.
 
 ## Table of Contents
 - [Features](#features)
@@ -9,32 +11,36 @@ Bough (/baʊ/) is an overengineered tool for creating tree diagrams. Useful for 
 - [Usage](#usage)
 - [Screenshots](#screenshots)
 
-
 ## Features
 - ASCII, HTML, Markdown, or ANSI terminal output support.
-- Emoji or Nerd Font based icons.
+- Emoji, Non-emoji unicode, or Nerd Font based icons.
 - Colours based on filetype (for ANSI and HTML output).
-- Wrapping support if a fixed width is desired, including support for wrapping descriptions.
+- Wrapping support if a fixed width is desired.
 - Theming support
 - Support for [project files](#project-files)
 
-### Project files
-This functionality is designed for projects which want to have a file tree with descriptions explaining the purpose of files and directories. 
-Bough will look for a `.boughconf` file in the directory you point it to. This file follows a simple plain text format. Here's the 
-`.boughconf` for the Borough repo itself. 
+### Project Files
+Bough has support for a plain-text configuration format. Bough will look for a `.boughconf` file in the directory you point it to, or one can be supplied with the `-c` flag. The primary purpose of a `.boughconf` is to add descriptions to files in your project, but it can also be used to add default values for `bough` arguments (e.g. depth, theme, icon style). 
 
+Please note that `.boughconf` files are only read from the directory passed into `bough`. If you run `bough` on the root of your repo, `<root>/.boughconf` will be used exclusively. If you pass in `<root>/src`, only `<root>/src/.boughconf` will be read. While limiting in some ways, 
+this is intentional for the sake of simplicity.
 
+ Here is the `.boughconf` for the Bough repo itself. 
+
+*(Comments begin with #)*
 
 ```
 # Directories are indicated by a trailing slash. 
 # We could also add a description for a file called 'src' by ommitting the trailing slash
 # The first part of any line is the folder or file name, and then the description for that file comes after a space.
-./src/ The source code for the borough binary.
-./src/main.rs The entry point of borough
+bough/ The bough binary project.
+bough-lib/ The bough-lib project.
+Cargo.toml The workspace Cargo.toml file
+
 
 # Fill this out later
 
-# If a --- delimeter is found, everything after it acts as default values for borough arguments like depth, hidden files, output type, and icon style.
+# If a --- delimeter is found, everything after it acts as default values for bough arguments like depth, hidden files, output type, and icon style.
 ---
 # Possible values: ascii,html,ansi,markdown
 output=txt
@@ -43,14 +49,18 @@ depth=0
 # Possible values: none,emoji,nerd,unicode
 icons=none
 
+# Below are options that are unused in the project's bough.conf
 
+# Possible values: any .toml theme file
+# theme=<YOURTHEME>.toml
 
+# Possible values: true, false
+# hidden=false
 ```
 
-Running `borough gen` will create a new `.boroughconf` file listing all the files that `borough` finds. This respects the `a` argument 
+Running `bough gen` will create a new `.boughconf` file listing all the files that `bough` finds. This respects the `a` argument 
 and `.gitignore`.
 
-Comment lines can be included with a `#`. 
 
 ## Installation
 If you already have a Rust toolchain installed, you can run:
@@ -66,7 +76,6 @@ Otherwise, download a binary release or install using Homebrew:
 Usage: bough [OPTIONS] [path] [COMMAND]
 
 Commands:
-  tui   Enter the TUI mode for more advanced editing
   help  Print this message or the help of the given subcommand(s)
 
 Arguments:
