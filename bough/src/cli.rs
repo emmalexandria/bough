@@ -52,10 +52,10 @@ impl From<ArgMatches> for Args {
 }
 
 pub fn build_cli() -> Command {
-    let tui = command!("tui").about("Enter the TUI mode for more advanced editing");
+    let gen_conf = command!("gen").about("Generate a .boughconf file with the passed options, filling out all found files and directories");
 
     command!()
-        .subcommand(tui)
+        .subcommand(gen_conf)
         .arg(
             Arg::new("path")
                 .num_args(1)
