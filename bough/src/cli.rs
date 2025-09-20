@@ -1,7 +1,7 @@
 use std::{fmt::Display, path::PathBuf};
 
 use bough_lib::icons::IconType;
-use clap::{command, ArgMatches, Command, CommandFactory, Parser, ValueEnum};
+use clap::{Command, CommandFactory, Parser, ValueEnum};
 use clap_help::Printer;
 use crossterm::style::Color;
 
@@ -82,7 +82,7 @@ pub struct Args {
     pub generate: bool,
 }
 
-pub fn print_help_if_needed(args: Args) -> bool {
+pub fn print_help_if_needed(args: &Args) -> bool {
     if args.help {
         build_help_printer(Args::command()).print_help();
         return true;
@@ -151,8 +151,4 @@ fn build_help_printer(cmd: Command) -> Printer<'static> {
     skin.bold.set_fg(Color::AnsiValue(198));
 
     p
-}
-
-pub fn get_matches(cmd: Command) -> ArgMatches {
-    cmd.get_matches()
 }
