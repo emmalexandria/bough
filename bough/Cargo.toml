@@ -1,8 +1,12 @@
 [package]
 name = "bough"
+authors = ["Emma Alexandria <emma.jellemabutler@gmail.com>"]
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 bough-lib = {path="../bough-lib"}
-clap = { version = "4.5.47", features = ["cargo", "derive"] }
+clap = { version = "4.5.47", features = ["cargo", "derive", "string", "wrap_help"] }
+clap-help = "1.5.0"
+crossterm = "0.29.0"
+owo-colors = "4.2.2"
