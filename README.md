@@ -76,21 +76,47 @@ Otherwise, download a binary release or install using Homebrew:
 
 ## Usage
 ```
-Usage: bough [OPTIONS] [path] [COMMAND]
+                                              bough 0.1.0
 
-Commands:
-  help  Print this message or the help of the given subcommand(s)
+bough is an overengineered CLI for creating file-tree diagrams in a variety of output formats and styles.
 
-Arguments:
-  [path]  [default: ./]
+It supports:
+• HTML, ANSI, raw text, and Markdown output.
+• Varying icon styles
+• Configuration files
+
+Usage:  bough [options] [PATH]
+
+• PATH : The root path of the tree.
 
 Options:
-  -i, --icons <style>  The style of icons to use [default: none] [possible values: none, unicode, emoji, nerd]
-  -d, --depth <depth>  The depth to build the tree to. 0 will build a tree as large as possible [default: 0]
-  -a, --all            Show hidden files
-  -r, --root           Show the root directory in the file tree
-  -h, --help           Print help
-  -V, --version        Print version
+┌─────┬──────────┬──────┬──────────────────────────────────────────────────────────────────────┐
+│short│   long   │value │description                                                           │
+├─────┼──────────┼──────┼──────────────────────────────────────────────────────────────────────┤
+│ -d  │--depth   │DEPTH │The depth to build the file tree to. 0 will build as much as possible.│
+│     │          │      │ Default: 0                                                           │
+│ -f  │--format  │FORMAT│                                                                      │
+│     │          │      │ Possible values: [html, text, ansi, markdown]                        │
+│     │          │      │ Default: text                                                        │
+│ -i  │--icons   │STYLE │                                                                      │
+│     │          │      │ Possible values: [none, nerd, unicode, emoji]                        │
+│     │          │      │ Default: none                                                        │
+│ -o  │--out     │ PATH │Output to the given file.                                             │
+│ -c  │--copy    │      │Copy the output to the system clipboard.                              │
+│ -a  │--all     │      │Display hidden files in the output.                                   │
+│ -r  │--root    │      │Show the root folder at the top of the tree.                          │
+│ -h  │--help    │      │Print this help output.                                               │
+│ -g  │--generate│      │Generate a configuration file in [PATH] respecting passed arguments.  │
+│ -V  │--version │      │Print version                                                         │
+└─────┴──────────┴──────┴──────────────────────────────────────────────────────────────────────┘
+
+Examples:
+1) Build an HTML tree outputting it to a file: bough ./src -o output.html -i nerd
+This outputs an HTML tree based on ./src with Nerd Font icons to output.html
+
+See also: bough-lib and boughd!
+
+Made with ♥ by Emma Alexandria <emma.jellemabutler@gmail.com>
 ```
 
 ## Screenshots
