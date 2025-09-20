@@ -5,3 +5,7 @@ pub enum IconType {
     Unicode,
     Emoji,
 }
+
+pub trait Icon {
+    fn get_icon(&self, icon_type: IconType) -> Option<String>;
+}

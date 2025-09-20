@@ -1,10 +1,11 @@
 use std::{borrow::Cow, collections::HashMap};
 
-use crate::output::filetypes::FileType;
+use crate::tree::filetypes::FileType;
 
 pub struct HTMLClasses<'a> {
     directory: Option<Cow<'a, str>>,
     file: Option<Cow<'a, str>>,
+    icon: Option<Cow<'a, str>>,
     file_types: HashMap<FileType, Cow<'a, str>>,
 }
 
@@ -13,6 +14,7 @@ impl<'a> HTMLClasses<'a> {
         Self {
             directory: None,
             file: None,
+            icon: None,
             file_types: HashMap::new(),
         }
     }
@@ -24,6 +26,11 @@ impl<'a> HTMLClasses<'a> {
 
     pub fn file<S: Into<Cow<'a, str>>>(mut self, class: S) -> Self {
         self.file = Some(class.into());
+        self
+    }
+
+    pub fn icon<S: Into<Cow<'a, str>>>(mut self, class: S) -> Self {
+        self.icon = Some(class.into());
         self
     }
 
