@@ -1,3 +1,6 @@
+//! `bough-lib` is the crate which powers the [Bough](https://github.com/emmalexandria/bough)
+//! project.
+
 mod border;
 pub mod format;
 mod tree;

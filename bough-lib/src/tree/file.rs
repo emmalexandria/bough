@@ -1,12 +1,14 @@
 use std::{
+    fmt::Display,
     fs::{metadata, read_dir},
     io,
     path::Path,
 };
 
 use crate::{
-    filetypes::{FileType, ItemType},
+    filetypes::{FileIcons, FileType},
     tree::os_str_to_string,
+    Tree,
 };
 
 pub type NodeId = usize;
@@ -17,15 +19,6 @@ pub const NULL_NODE: NodeId = usize::MAX;
 pub enum NodeType {
     Directory(Vec<NodeId>),
     File,
-}
-
-#[derive(Debug, Clone)]
-pub struct FsNode {
-    pub name: String,
-    pub ext: Option<String>,
-    pub node_type: ItemType,
-    pub parent: NodeId,
-    pub children: Vec<NodeId>,
 }
 
 pub struct FsTree {
@@ -46,7 +39,7 @@ impl FsTree {
             .to_string();
         let root_ext = path.extension().map(os_str_to_string);
         let mut tree = Self {
-            nodes: Vec::with_capacity(128),
+            nodes: Vec::with_capacity(capacity),
             free_list: Vec::new(),
             root: 0,
         };
@@ -54,7 +47,7 @@ impl FsTree {
         let root_node = FsNode {
             name: root_name,
             ext: root_ext,
-            node_type: ItemType::Directory(false),
+            node_type: FileIcons::Directory(false),
             parent: NULL_NODE,
             children: Vec::new(),
         };
@@ -110,7 +103,7 @@ impl FsTree {
                 let node = FsNode {
                     name,
                     ext,
-                    node_type: ItemType::Directory(false),
+                    node_type: FileIcons::Directory(false),
                     parent: parent_id,
                     children: Vec::new(),
                 };
@@ -121,7 +114,7 @@ impl FsTree {
                 let node = FsNode {
                     name,
                     ext,
-                    node_type: ItemType::File(FileType::Binary),
+                    node_type: FileIcons::File(FileType::Binary),
                     parent: parent_id,
                     children: Vec::new(),
                 };
@@ -132,7 +125,7 @@ impl FsTree {
         }
 
         if let Some(parent) = self.get_node_mut(parent_id) {
-            if let ItemType::Directory(_) = parent.node_type {
+            if let FileIcons::Directory(_) = parent.node_type {
                 for (c_id, _, _) in &children {
                     parent.children.push(*c_id);
                 }
@@ -171,5 +164,53 @@ impl FsTree {
     #[inline]
     pub fn get_node_mut(&mut self, id: NodeId) -> Option<&mut FsNode> {
         self.nodes.get_mut(id)?.as_mut()
+    }
+
+    #[inline]
+    pub fn get_children(&self, id: NodeId) -> Option<&Vec<NodeId>> {
+        Some(&self.get_node(id)?.children)
+    }
+}
+
+impl Tree for FsTree {
+    type Item = FsNode;
+    type Id = NodeId;
+
+    #[inline]
+    fn get_children(&self, id: Self::Id) -> Vec<Self::Item> {}
+}
+
+impl Display for FsTree {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut stack: Vec<usize> = vec![self.root];
+        while let Some(id) = stack.pop() {
+            if let Some(n) = self.get_node(id) {
+                let children = n.children.clone();
+                stack.extend(children);
+                writeln!(f, "{n}")?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FsNode {
+    pub name: String,
+    pub ext: Option<String>,
+    pub node_type: FileIcons,
+    pub parent: NodeId,
+    pub children: Vec<NodeId>,
+}
+
+impl Display for FsNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "{} {}",
+            self.name,
+            self.node_type == FileIcons::Directory(false)
+        )
     }
 }

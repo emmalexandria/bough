@@ -1,6 +1,6 @@
-use bough_lib::fs_tree::FsTree;
+use bough_lib::file::FsTree;
 
 fn main() {
-    let tree = FsTree::build("/Users/emma", None).unwrap();
-    println!("{}", tree.len())
+    let tree = FsTree::build("./", None).unwrap();
+    println!("{tree}");
 }
