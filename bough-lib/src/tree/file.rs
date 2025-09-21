@@ -1,216 +1,183 @@
-use std::{
-    fmt::Display,
-    fs::{metadata, read_dir},
-    io,
-    path::Path,
-};
+//! Implements [FileTree], a tree type for representing the file system.
+//!
+//! Internally, [FileTree] uses the [ArenaTree] generic.
 
-use crate::{
-    filetypes::{FileIcons, FileType},
-    tree::os_str_to_string,
-    Tree,
-};
+use std::fmt::Display;
+use std::fs::read_dir;
+use std::io;
+use std::path::{Path, PathBuf};
 
-pub type NodeId = usize;
+use crate::tree::tree;
+use crate::{tree::os_str_to_string, ArenaTree, TreeItem};
 
-pub const NULL_NODE: NodeId = usize::MAX;
-
-#[derive(Debug, Clone)]
-pub enum NodeType {
-    Directory(Vec<NodeId>),
+/// The type of the file
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub enum FileType {
+    /// Directory
+    Directory,
+    /// File
     File,
 }
 
-pub struct FsTree {
-    nodes: Vec<Option<FsNode>>,
-    free_list: Vec<NodeId>,
+impl TryFrom<&Path> for FileType {
+    type Error = io::Error;
 
-    root: NodeId,
+    fn try_from(path: &Path) -> Result<Self, Self::Error> {
+        let metadata = path.metadata()?;
+
+        match metadata.is_dir() {
+            true => Ok(Self::Directory),
+            false => Ok(Self::File),
+        }
+    }
 }
 
-impl FsTree {
-    pub fn new<P: AsRef<Path>>(root_name: P, capacity: Option<usize>) -> Self {
-        let capacity = capacity.unwrap_or(1024);
-        let path = root_name.as_ref();
-        let root_name = path
-            .file_name()
-            .unwrap_or_else(|| path.as_os_str())
-            .to_string_lossy()
-            .to_string();
-        let root_ext = path.extension().map(os_str_to_string);
-        let mut tree = Self {
-            nodes: Vec::with_capacity(capacity),
-            free_list: Vec::new(),
-            root: 0,
-        };
+type Id = usize;
 
-        let root_node = FsNode {
-            name: root_name,
-            ext: root_ext,
-            node_type: FileIcons::Directory(false),
-            parent: NULL_NODE,
+/// An implementation of [TreeItem] for file trees.
+#[derive(Clone, PartialEq, Eq)]
+pub struct FileTreeItem {
+    children: Vec<Id>,
+    parent: Option<Id>,
+
+    /// The full path of the item
+    pub path: PathBuf,
+    /// The name of the item including extension
+    pub name: String,
+    /// The extension of the item
+    pub ext: Option<String>,
+    /// The [FileType] of the item
+    pub file_type: FileType,
+}
+
+impl FileTreeItem {
+    /// Create a new file tree item from a given path and parent ID
+    pub fn from_path<P: AsRef<Path>>(path: P, parent: Id) -> io::Result<Self> {
+        let path = path.as_ref();
+        let name = path.file_name().map(os_str_to_string).unwrap_or_default();
+        let file_type = path.try_into()?;
+
+        let ret = Self {
+            parent: Some(parent),
             children: Vec::new(),
+
+            path: path.into(),
+            name,
+            ext: path.extension().map(os_str_to_string),
+            file_type,
         };
 
-        tree.nodes.push(Some(root_node));
-        tree
+        Ok(ret)
+    }
+}
+
+impl std::fmt::Debug for FileTreeItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let end = match self.file_type {
+            FileType::Directory => "(dir)",
+            FileType::File => "",
+        };
+        write!(f, "{} ({:?}) {}", self.name, self.path, end)
+    }
+}
+
+impl TreeItem<Id> for FileTreeItem {
+    fn children(&self) -> &Vec<Id> {
+        &self.children
     }
 
-    pub fn build<P: AsRef<Path>>(path: P, capacity: Option<usize>) -> std::io::Result<Self> {
+    fn parent(&self) -> Option<Id> {
+        self.parent
+    }
+
+    fn set_parent(&mut self, parent: Id) {
+        self.parent = Some(parent);
+    }
+
+    fn add_child(&mut self, child: Id) {
+        self.children.push(child)
+    }
+}
+
+/// An implementation of a file tree using [ArenaTree]
+pub struct FileTree {
+    tree: ArenaTree<FileTreeItem, Id>,
+    root_path: PathBuf,
+}
+
+impl FileTree {
+    /// Create an empty file tree starting at the path. Please call build to actually build the
+    /// file tree.
+    pub fn new<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         let path = path.as_ref();
-        let metadata = metadata(path)?;
+        let metadata = path.metadata()?;
 
         if !metadata.is_dir() {
             return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "Root of tree must be a directory",
+                std::io::ErrorKind::NotADirectory,
+                "Root path for file tree must be a directory.",
             ));
         }
 
-        let root_name = path
-            .file_name()
-            .unwrap_or_else(|| path.as_os_str())
-            .to_string_lossy()
-            .to_string();
+        let tree = ArenaTree::empty(1024);
 
-        let mut tree = FsTree::new(root_name, capacity);
-
-        tree.build_from_directory(path, tree.root)?;
-
-        Ok(tree)
+        Ok(Self {
+            tree,
+            root_path: path.into(),
+        })
     }
 
-    fn build_from_directory<P: AsRef<Path>>(
-        &mut self,
-        path: P,
-        parent_id: NodeId,
-    ) -> std::io::Result<()> {
-        let path = path.as_ref();
+    /// Build the file tree
+    #[must_use = "moves the value of self and returns the modified value"]
+    pub fn build(mut self) -> io::Result<Self> {
+        let root = self.root_path.clone().try_into()?;
 
+        self.tree = self.tree.root(root);
+
+        self.build_from_directory(self.root_path.clone(), self.tree.root)?;
+
+        Ok(self)
+    }
+
+    fn build_from_directory<P: AsRef<Path>>(&mut self, path: P, parent: Id) -> io::Result<()> {
+        let path = path.as_ref();
         let entries = read_dir(path)?;
-        let mut children = Vec::new();
 
         for entry in entries {
             let entry = entry?;
-            let e_path = entry.path();
+            let path = entry.path();
             let metadata = entry.metadata()?;
 
-            let name = entry.file_name().to_string_lossy().to_string();
-            let ext = e_path.extension().map(os_str_to_string);
-            let node_id = self.allocate_node_id();
+            let name = entry.file_name();
+            let ext = path.extension();
+
+            let node: FileTreeItem = path.clone().try_into()?;
+            let id = self.tree.insert_node(node).map_err(|e| match e.kind {
+                tree::ErrorKind::NeedsParent => {
+                    io::Error::new(io::ErrorKind::NotFound, "Parent not found")
+                }
+                _ => io::Error::new(io::ErrorKind::Other, "Unknown error"),
+            })?;
 
             if metadata.is_dir() {
-                let node = FsNode {
-                    name,
-                    ext,
-                    node_type: FileIcons::Directory(false),
-                    parent: parent_id,
-                    children: Vec::new(),
-                };
-
-                self.nodes[node_id] = Some(node);
-                children.push((node_id, e_path, true));
-            } else if metadata.is_file() {
-                let node = FsNode {
-                    name,
-                    ext,
-                    node_type: FileIcons::File(FileType::Binary),
-                    parent: parent_id,
-                    children: Vec::new(),
-                };
-
-                self.nodes[node_id] = Some(node);
-                children.push((node_id, e_path, false));
-            }
-        }
-
-        if let Some(parent) = self.get_node_mut(parent_id) {
-            if let FileIcons::Directory(_) = parent.node_type {
-                for (c_id, _, _) in &children {
-                    parent.children.push(*c_id);
-                }
-            }
-        }
-
-        for (child_id, entry_path, is_dir) in children {
-            if is_dir {
-                self.build_from_directory(&entry_path, child_id)?;
+                self.build_from_directory(path, id)?;
             }
         }
 
         Ok(())
     }
+}
 
-    fn allocate_node_id(&mut self) -> NodeId {
-        if let Some(id) = self.free_list.pop() {
-            id
+impl std::fmt::Debug for FileTree {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "File tree contains {} items", self.tree.len())?;
+        writeln!(f, "Debug tree view")?;
+        writeln!(f, "---------------")?;
+        let stack: Vec<Id> = Vec::new();
+        if let Some(r) = self.tree.get_node(self.tree.root) {
         } else {
-            let id = self.nodes.len() as NodeId;
-            self.nodes.push(None);
-            id
+            writeln!(f, "No root node!")?;
         }
-    }
-
-    #[inline]
-    pub fn len(&self) -> usize {
-        self.nodes.len()
-    }
-
-    #[inline]
-    pub fn get_node(&self, id: NodeId) -> Option<&FsNode> {
-        self.nodes.get(id)?.as_ref()
-    }
-
-    #[inline]
-    pub fn get_node_mut(&mut self, id: NodeId) -> Option<&mut FsNode> {
-        self.nodes.get_mut(id)?.as_mut()
-    }
-
-    #[inline]
-    pub fn get_children(&self, id: NodeId) -> Option<&Vec<NodeId>> {
-        Some(&self.get_node(id)?.children)
-    }
-}
-
-impl Tree for FsTree {
-    type Item = FsNode;
-    type Id = NodeId;
-
-    #[inline]
-    fn get_children(&self, id: Self::Id) -> Vec<Self::Item> {}
-}
-
-impl Display for FsTree {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut stack: Vec<usize> = vec![self.root];
-        while let Some(id) = stack.pop() {
-            if let Some(n) = self.get_node(id) {
-                let children = n.children.clone();
-                stack.extend(children);
-                writeln!(f, "{n}")?;
-            }
-        }
-
         Ok(())
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct FsNode {
-    pub name: String,
-    pub ext: Option<String>,
-    pub node_type: FileIcons,
-    pub parent: NodeId,
-    pub children: Vec<NodeId>,
-}
-
-impl Display for FsNode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(
-            f,
-            "{} {}",
-            self.name,
-            self.node_type == FileIcons::Directory(false)
-        )
     }
 }
