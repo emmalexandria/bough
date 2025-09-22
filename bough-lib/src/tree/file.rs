@@ -2,7 +2,6 @@
 //!
 //! Internally, [FileTree] uses the [ArenaTree] generic.
 
-use std::fmt::Display;
 use std::fs::read_dir;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -81,6 +80,26 @@ impl std::fmt::Debug for FileTreeItem {
     }
 }
 
+impl FileTreeItem {
+    /// Internal crate function for recursively printing a debug view of a tree item
+    pub(crate) fn debug_recursive(
+        &self,
+        tree: &ArenaTree<Self, usize>,
+        f: &mut std::fmt::Formatter<'_>,
+        depth: usize,
+    ) -> std::fmt::Result {
+        writeln!(f, "{}{:?}", " ".repeat(depth * 2), self)?;
+        for child in &self.children {
+            if let Some(c) = tree.get_node(*child) {
+                let depth = depth + 1;
+                c.debug_recursive(tree, f, depth)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
 impl TreeItem<Id> for FileTreeItem {
     fn children(&self) -> &Vec<Id> {
         &self.children
@@ -130,7 +149,18 @@ impl FileTree {
     /// Build the file tree
     #[must_use = "moves the value of self and returns the modified value"]
     pub fn build(mut self) -> io::Result<Self> {
-        let root = self.root_path.clone().try_into()?;
+        let root = FileTreeItem {
+            parent: None,
+            children: Vec::new(),
+            file_type: FileType::Directory,
+            name: self
+                .root_path
+                .file_name()
+                .map(os_str_to_string)
+                .unwrap_or_default(),
+            ext: self.root_path.extension().map(os_str_to_string),
+            path: self.root_path.clone(),
+        };
 
         self.tree = self.tree.root(root);
 
@@ -151,7 +181,20 @@ impl FileTree {
             let name = entry.file_name();
             let ext = path.extension();
 
-            let node: FileTreeItem = path.clone().try_into()?;
+            let file_type = match metadata.is_dir() {
+                true => FileType::Directory,
+                false => FileType::File,
+            };
+
+            let node = FileTreeItem {
+                parent: Some(parent),
+                path: path.clone(),
+                children: Vec::new(),
+                name: os_str_to_string(name),
+                ext: ext.map(os_str_to_string),
+                file_type,
+            };
+
             let id = self.tree.insert_node(node).map_err(|e| match e.kind {
                 tree::ErrorKind::NeedsParent => {
                     io::Error::new(io::ErrorKind::NotFound, "Parent not found")
@@ -173,10 +216,9 @@ impl std::fmt::Debug for FileTree {
         writeln!(f, "File tree contains {} items", self.tree.len())?;
         writeln!(f, "Debug tree view")?;
         writeln!(f, "---------------")?;
-        let stack: Vec<Id> = Vec::new();
+
         if let Some(r) = self.tree.get_node(self.tree.root) {
-        } else {
-            writeln!(f, "No root node!")?;
+            r.debug_recursive(&self.tree, f, 0)?;
         }
         Ok(())
     }

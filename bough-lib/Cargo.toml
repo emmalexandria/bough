@@ -2,3 +2,15 @@
 name = "bough-lib"
 version = "0.1.0"
 edition = "2024"
+
+[dependencies]
+clap = {version = "4.5.48", optional = true}
+owo-colors = {version = "4.2.2", optional = true}
+
+
+[features]
+default = ["ansi"]
+html = []
+md = []
+ansi = ["dep:owo-colors"]
+clap = []
