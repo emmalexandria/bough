@@ -1,7 +1,7 @@
 use clap::Parser;
 
 use crate::cli::{print_help_if_needed, Args};
-use bough_lib::{Tree, TreeOptions};
+use bough_lib::file::FileTree;
 
 mod cli;
 
@@ -12,11 +12,7 @@ fn main() {
         return;
     }
 
-    let options = TreeOptions {
-        icons: args.icons.into(),
-        depth: args.depth,
-        hidden: args.all_files,
-    };
+    let tree = FileTree::new("./").unwrap().build().unwrap();
 
-    let tree = Tree::with_options(options).build(args.path);
+    println!("{:?}", tree);
 }

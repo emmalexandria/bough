@@ -1,17 +1,10 @@
 use std::{fmt::Display, path::PathBuf};
 
-use bough_lib::icons::IconType;
+use bough_lib::output::icons::IconType;
+
 use clap::{Command, CommandFactory, Parser, ValueEnum};
 use clap_help::Printer;
 use crossterm::style::Color;
-
-#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum IconArg {
-    None,
-    Nerd,
-    Unicode,
-    Emoji,
-}
 
 #[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum OutputFormat {
@@ -19,28 +12,6 @@ pub enum OutputFormat {
     Text,
     ANSI,
     Markdown,
-}
-
-impl Display for IconArg {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            Self::None => "none",
-            Self::Nerd => "nerd",
-            Self::Unicode => "unicode",
-            Self::Emoji => "emoji",
-        })
-    }
-}
-
-impl Into<IconType> for IconArg {
-    fn into(self) -> IconType {
-        match self {
-            Self::None => IconType::None,
-            Self::Nerd => IconType::Nerd,
-            Self::Unicode => IconType::Unicode,
-            Self::Emoji => IconType::Emoji,
-        }
-    }
 }
 
 #[derive(Parser, Debug, Clone, PartialEq, Eq, Hash)]
@@ -55,8 +26,8 @@ pub struct Args {
     pub depth: usize,
     #[arg(long, short, default_value = "text")]
     pub format: OutputFormat,
-    #[arg(long, short, default_value_t = IconArg::None, value_name="STYLE")]
-    pub icons: IconArg,
+    #[arg(long, short, default_value_t = IconType::None, value_name="STYLE")]
+    pub icons: IconType,
     #[arg(long, short, value_name = "PATH", help = "Output to the given file.")]
     pub out: Option<PathBuf>,
     #[arg(
